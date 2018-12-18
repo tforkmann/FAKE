@@ -28,7 +28,7 @@ type private HttpClientWithTimeout(timeout : TimeSpan) as this =
     let setter = lazy(
         match typeof<HttpClientAdapter>.GetField("_http", BindingFlags.NonPublic ||| BindingFlags.Instance) with
         | null -> ()
-        | f -> 
+        | f ->
             match f.GetValue(this) with
             | :? HttpClient as http -> http.Timeout <- timeout
             | _ -> ())
@@ -75,7 +75,7 @@ let private retryWithArg count input asycnF =
             return captureAndReraise ex
     }
 
-let createClient user password =
+let createClient user (password: string) =
     async {
         let httpClient = new HttpClientWithTimeout(TimeSpan.FromMinutes 20.)
         let connection = new Connection(new ProductHeaderValue("FAKE"), httpClient)
@@ -93,7 +93,7 @@ let createClientWithToken token =
         return github
     }
 
-let createGHEClient url user password =
+let createGHEClient url user (password: string) =
     async {
         let credentials = Credentials(user, password)
         let httpClient = new HttpClientWithTimeout(TimeSpan.FromMinutes 20.)
@@ -173,9 +173,9 @@ let getLastRelease owner project (client : Async<GitHubClient>) =
             DraftRelease = draft }
     }
 
-let getReleaseByTag owner project tag (client : Async<GitHubClient>) =
+let getReleaseByTag (owner:string) (project:string) (tag:string) (client : Async<GitHubClient>) =
     retryWithArg 5 client <| fun client' -> async {
-        let! drafts = Async.AwaitTask <| client'.Repository.Release.GetAll(owner, project)
+        let! drafts = client'.Repository.Release.GetAll(owner, project) |> Async.AwaitTask
         let matches = drafts |> Seq.filter (fun (r: Release) -> r.TagName = tag)
 
         if Seq.isEmpty matches then
